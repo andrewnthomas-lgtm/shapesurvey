@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SHAPE</title>
+<style>
+:root{
+  --paper:#FAF8F3; --ink:#20241F; --ink-soft:#565F55;
+  --line:#DEDACB; --accent:#2C4A43; --accent-soft:#E4EDE9;
+  --gold:#B98A2E; --card:#FFFFFF; --radius:14px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#181A17; --ink:#EDEAE0; --ink-soft:#A8AC9F;
+    --line:#33362E; --accent:#7FB8A8; --accent-soft:#233029;
+    --gold:#D9A84E; --card:#20231F;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#181A17; --ink:#EDEAE0; --ink-soft:#A8AC9F;
+  --line:#33362E; --accent:#7FB8A8; --accent-soft:#233029;
+  --gold:#D9A84E; --card:#20231F;
+}
+*{box-sizing:border-box;}
+body{
+  margin:0; background:var(--paper); color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  min-height:100vh; display:flex; flex-direction:column;
+}
+.serif{font-family:Georgia,"Iowan Old Style","Palatino Linotype",serif;}
+.wrap{max-width:480px; margin:0 auto; width:100%; padding:20px 20px 100px; flex:1;}
+.progress{position:sticky; top:0; background:var(--paper); z-index:5; padding:14px 20px 8px; max-width:480px; margin:0 auto; width:100%;}
+.progress-track{height:4px; background:var(--line); border-radius:2px; overflow:hidden;}
+.progress-fill{height:100%; background:var(--accent); transition:width .3s ease;}
+.progress-label{font-size:12px; color:var(--ink-soft); margin-top:6px; letter-spacing:.02em;}
+h1{font-size:26px; line-height:1.2; margin:8px 0 6px;}
+h2{font-size:20px; line-height:1.3; margin:0 0 4px;}
+p.sub{color:var(--ink-soft); font-size:15px; line-height:1.5; margin:0 0 20px;}
+.card{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:18px; margin-bottom:14px;}
+.eyebrow{font-size:13px; color:var(--gold); font-weight:600; margin-bottom:6px;}
+.statement{font-size:17px; line-height:1.4; margin:0 0 12px;}
+.scale{display:flex; gap:6px;}
+.scale button{
+  flex:1; padding:12px 0; border-radius:10px; border:1px solid var(--line);
+  background:transparent; color:var(--ink); font-size:15px; font-weight:600;
+  cursor:pointer; min-height:44px;
+}
+.scale button[aria-pressed="true"]{background:var(--accent); border-color:var(--accent); color:#fff;}
+.scale-labels{display:flex; justify-content:space-between; font-size:11px; color:var(--ink-soft); margin-top:6px;}
+.choice{
+  display:flex; align-items:flex-start; gap:12px; padding:14px; border:1px solid var(--line);
+  border-radius:var(--radius); margin-bottom:10px; cursor:pointer; background:var(--card);
+  min-height:44px;
+}
+.choice[aria-pressed="true"]{border-color:var(--accent); background:var(--accent-soft);}
+.choice input{margin-top:3px; width:18px; height:18px; accent-color:var(--accent); flex-shrink:0;}
+.choice span{font-size:16px; line-height:1.4;}
+.hint{font-size:13px; color:var(--ink-soft); margin:-6px 0 16px;}
+textarea, input[type=text]{
+  width:100%; border:1px solid var(--line); border-radius:10px; padding:12px;
+  font-size:16px; font-family:inherit; background:var(--card); color:var(--ink); resize:vertical;
+}
+label.field{display:block; font-size:14px; color:var(--ink-soft); margin:16px 0 6px;}
+.nav{
+  position:fixed; bottom:0; left:0; right:0; background:var(--paper);
+  border-top:1px solid var(--line); padding:12px 20px calc(12px + env(safe-area-inset-bottom));
+}
+.nav-inner{max-width:480px; margin:0 auto; display:flex; gap:10px;}
+.btn{
+  flex:1; padding:14px; border-radius:10px; border:1px solid var(--accent);
+  background:var(--accent); color:#fff; font-size:16px; font-weight:600; cursor:pointer;
+  min-height:48px;
+}
+.btn.secondary{background:transparent; color:var(--ink); border-color:var(--line);}
+.btn:disabled{opacity:.4; cursor:not-allowed;}
+.result-row{margin-bottom:14px;}
+.result-top{display:flex; justify-content:space-between; font-size:15px; margin-bottom:5px;}
+.result-bar{height:8px; background:var(--line); border-radius:4px; overflow:hidden;}
+.result-fill{height:100%; background:var(--accent);}
+.result-fill.top{background:var(--gold);}
+.pill{display:inline-block; background:var(--accent-soft); color:var(--accent); font-size:13px; padding:4px 10px; border-radius:20px; margin:3px 6px 3px 0;}
+.verse{font-style:italic; color:var(--ink-soft); margin-top:24px; font-size:15px; line-height:1.5;}
+.center{text-align:center;}
+.icon-circle{width:56px; height:56px; border-radius:50%; background:var(--accent-soft); display:flex; align-items:center; justify-content:center; margin:0 auto 16px; font-size:26px;}
+</style>
+</head>
+<body>
+<div class="progress" id="progressBar" style="display:none;">
+  <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+  <div class="progress-label" id="progressLabel"></div>
+</div>
+<div class="wrap" id="app"></div>
+<div class="nav" id="nav" style="display:none;">
+  <div class="nav-inner">
+    <button class="btn secondary" id="backBtn">Back</button>
+    <button class="btn" id="nextBtn">Next</button>
+  </div>
+</div>
+
+<script>
+const GIFTS = [
+  {key:'teaching', label:'Teaching', statements:[
+    'I enjoy explaining difficult ideas in a simple way.',
+    'I enjoy helping people understand what the Bible teaches.']},
+  {key:'leadership', label:'Leadership', statements:[
+    "I'm comfortable taking responsibility when a group needs direction.",
+    'People naturally look to me when a group needs to move forward.']},
+  {key:'encouragement', label:'Encouragement', statements:[
+    'I naturally encourage people who are discouraged.',
+    'I find the right words to help someone keep going.']},
+  {key:'mercy', label:'Mercy', statements:[
+    "I'm drawn toward people who are overlooked or struggling.",
+    "I feel what other people are feeling, especially when they're hurting."]},
+  {key:'giving', label:'Giving', statements:[
+    'I\'m willing to give my time, money, or things to help others.',
+    'I look for ways to meet a need before being asked.']},
+  {key:'serving', label:'Serving', statements:[
+    'I notice practical needs and want to do something about them.',
+    "I'd rather help behind the scenes than be noticed for it."]},
+];
+
+const TRAITS = {
+  h: {title:'Heart', desc:"What you naturally care about. Pick 2 or 3 that sound like you \u2014 there's no right answer.", items:[
+    'I care deeply about people who are struggling.',
+    'I care about people who are new, lonely, or left out.',
+    'I enjoy making things that communicate an idea or story.',
+    'I\'m energised by bringing people together around a shared purpose.',
+    'I\'m drawn to serving people in my neighbourhood or city.']},
+  a: {title:'Abilities', desc:'Skills you\u2019ve developed or naturally have. Pick 2 or 3.', items:[
+    'I communicate clearly when I speak or write.',
+    'I\'m good at organising people, plans, or information.',
+    'I\'m comfortable working with technology or tools.',
+    'I\'m creative with words, images, music, or design.',
+    'I\'m dependable when given a responsibility.']},
+  p: {title:'Personality', desc:'How you relate, decide, and work. Pick 2 or 3.', items:[
+    'I get energy from being around people.',
+    'I prefer having a plan rather than making things up as I go.',
+    'I like trying new things and taking reasonable risks.',
+    'I naturally look for new ideas and possibilities.',
+    'I prefer working with others rather than alone.']},
+  e: {title:'Experiences', desc:'What you\u2019ve lived through. Pick 2 or 3.', items:[
+    'A difficult season of my life has helped me understand others better.',
+    'My education has given me skills I can use to help others.',
+    'A major change or transition has changed how I see life.',
+    'I\u2019ve had an experience where God helped me significantly.',
+    'Looking back, I can see how my story has prepared me for now.']},
+};
+
+const FIELDS = [
+  {key:'shaped', label:'God has shaped me to\u2026'},
+  {key:'care', label:'I particularly care about\u2026'},
+  {key:'good', label:'I\u2019m naturally good at\u2026'},
+  {key:'best', label:'I work best when\u2026'},
+  {key:'taught', label:'My experiences have taught me\u2026'},
+  {key:'gift', label:'My highest-scoring gift is\u2026'},
+  {key:'serve', label:'One place I could explore serving is\u2026'},
+];
+
+let state = load() || {step:0, s:{}, h:[], a:[], p:[], e:[], reflect:{}, nextstep:'', ask:''};
+GIFTS.forEach(g => { if(!state.s[g.key]) state.s[g.key] = [0,0]; });
+
+const STEPS = ['intro', ...GIFTS.map(g=>'gift-'+g.key), 'trait-h','trait-a','trait-p','trait-e','results','reflect','nextstep','final'];
+
+function save(){ try{ localStorage.setItem('shape-survey', JSON.stringify(state)); }catch(e){} }
+function load(){ try{ const v = localStorage.getItem('shape-survey'); return v ? JSON.parse(v) : null; }catch(e){ return null; } }
+
+function canProceed(){
+  const s = STEPS[state.step];
+  if(s.startsWith('gift-')){
+    const key = s.replace('gift-','');
+    return state.s[key][0] > 0 && state.s[key][1] > 0;
+  }
+  if(s.startsWith('trait-')){
+    const key = s.replace('trait-','');
+    return state[key].length > 0;
+  }
+  return true;
+}
+
+function render(){
+  const app = document.getElementById('app');
+  const s = STEPS[state.step];
+  const nav = document.getElementById('nav');
+  const progressBar = document.getElementById('progressBar');
+
+  if(s === 'intro' || s === 'final'){
+    progressBar.style.display = 'none';
+    nav.style.display = s === 'final' ? 'none' : 'block';
+  } else {
+    progressBar.style.display = 'block';
+    nav.style.display = 'block';
+    const pct = Math.round((state.step / (STEPS.length-2)) * 100);
+    document.getElementById('progressFill').style.width = pct + '%';
+    document.getElementById('progressLabel').textContent = 'Step ' + state.step + ' of ' + (STEPS.length-2);
+  }
+
+  if(s === 'intro') app.innerHTML = renderIntro();
+  else if(s.startsWith('gift-')) app.innerHTML = renderGift(s.replace('gift-',''));
+  else if(s.startsWith('trait-')) app.innerHTML = renderTrait(s.replace('trait-',''));
+  else if(s === 'results') app.innerHTML = renderResults();
+  else if(s === 'reflect') app.innerHTML = renderReflect();
+  else if(s === 'nextstep') app.innerHTML = renderNextStep();
+  else if(s === 'final') app.innerHTML = renderFinal();
+
+  attachHandlers(s);
+  document.getElementById('backBtn').disabled = state.step === 0;
+  document.getElementById('nextBtn').textContent = s === 'nextstep' ? 'Finish' : 'Next';
+  document.getElementById('nextBtn').disabled = !canProceed();
+  window.scrollTo(0,0);
+}
+
+function renderIntro(){
+  return `
+    <div class="center" style="padding-top:40px;">
+      <div class="icon-circle serif">S</div>
+      <h1 class="serif">SHAPE</h1>
+      <p class="sub">Discover how God has shaped you to serve others. This takes about 10 minutes. There are no right answers \u2014 it's a conversation starter, not a test.</p>
+    </div>
+    <div class="card">
+      <p class="statement" style="margin-bottom:8px;">You'll look at five things:</p>
+      <p class="hint" style="margin:0 0 4px;"><b>S</b>piritual Gifts &middot; <b>H</b>eart &middot; <b>A</b>bilities &middot; <b>P</b>ersonality &middot; <b>E</b>xperiences</p>
+    </div>`;
+}
+
+function renderGift(key){
+  const g = GIFTS.find(x=>x.key===key);
+  const idx = GIFTS.findIndex(x=>x.key===key);
+  return `
+    <div class="eyebrow">Spiritual Gifts</div>
+    <h2 class="serif">${g.label}</h2>
+    <p class="sub">Rate how much each statement sounds like you.</p>
+    ${g.statements.map((st,i)=>`
+      <div class="card">
+        <p class="statement">${st}</p>
+        <div class="scale" data-gift="${key}" data-idx="${i}">
+          ${[1,2,3,4,5].map(v=>`<button type="button" aria-pressed="${state.s[key][i]===v}" data-val="${v}">${v}</button>`).join('')}
+        </div>
+        <div class="scale-labels"><span>Not like me</span><span>Extremely like me</span></div>
+      </div>`).join('')}
+  `;
+}
+
+function renderTrait(key){
+  const t = TRAITS[key];
+  return `
+    <div class="eyebrow">${t.title}</div>
+    <h2 class="serif">What sounds like you?</h2>
+    <p class="sub">${t.desc}</p>
+    ${t.items.map((item,i)=>{
+      const checked = state[key].includes(i);
+      return `<div class="choice" aria-pressed="${checked}" data-trait="${key}" data-idx="${i}">
+        <input type="checkbox" ${checked?'checked':''} readonly>
+        <span>${item}</span>
+      </div>`;
+    }).join('')}
+    <p class="hint" id="traitHint"></p>
+  `;
+}
+
+function giftTotals(){
+  return GIFTS.map(g => ({label:g.label, total: state.s[g.key][0] + state.s[g.key][1]}))
+    .sort((a,b)=>b.total-a.total);
+}
+
+function renderResults(){
+  const totals = giftTotals();
+  const top = totals[0].total;
+  return `
+    <div class="eyebrow">Your Results</div>
+    <h2 class="serif">Spiritual Gifts</h2>
+    <p class="sub">Your highest total points to a gift worth exploring \u2014 not the sum of all six.</p>
+    <div class="card">
+      ${totals.map(t=>`
+        <div class="result-row">
+          <div class="result-top"><span>${t.label}</span><span>${t.total}/10</span></div>
+          <div class="result-bar"><div class="result-fill ${t.total===top?'top':''}" style="width:${t.total*10}%"></div></div>
+        </div>`).join('')}
+    </div>
+    <h2 class="serif" style="margin-top:24px;">Heart, Abilities, Personality, Experiences</h2>
+    <div class="card">
+      ${['h','a','p','e'].map(key=>`
+        <p class="statement" style="margin-bottom:6px;">${TRAITS[key].title}</p>
+        <div style="margin-bottom:14px;">
+          ${state[key].map(i=>`<span class="pill">${TRAITS[key].items[i]}</span>`).join('')}
+        </div>`).join('')}
+    </div>
+  `;
+}
+
+function renderReflect(){
+  return `
+    <div class="eyebrow">My Shape</div>
+    <h2 class="serif">Put it into words</h2>
+    <p class="sub">Use your results and today's conversation to finish these.</p>
+    ${FIELDS.map(f=>`
+      <label class="field">${f.label}</label>
+      <textarea rows="2" data-field="${f.key}">${state.reflect[f.key]||''}</textarea>
+    `).join('')}
+  `;
+}
+
+function renderNextStep(){
+  return `
+    <div class="eyebrow">Next Step</div>
+    <h2 class="serif">Choose one small step</h2>
+    <p class="sub">Join a team, help with a project, mentor someone, welcome newcomers, serve behind the scenes, or try something new.</p>
+    <label class="field">This week I will:</label>
+    <input type="text" id="nextstepInput" value="${state.nextstep||''}">
+    <label class="field">I'll ask this person for feedback on how I serve:</label>
+    <input type="text" id="askInput" value="${state.ask||''}">
+  `;
+}
+
+function renderFinal(){
+  return `
+    <div class="center" style="padding-top:40px;">
+      <div class="icon-circle serif">&#10003;</div>
+      <h1 class="serif">You don't need the perfect role before you serve.</h1>
+      <p class="sub">Start where there's a need. Pay attention to where God uses you. Let other people help you recognise what they see in you.</p>
+      <p class="verse">"Each of you should use whatever gift you have received to serve others."<br>&mdash; 1 Peter 4:10</p>
+      <button class="btn secondary" id="restartBtn" style="margin-top:24px; max-width:220px;">Start over</button>
+    </div>
+  `;
+}
+
+function attachHandlers(s){
+  if(s.startsWith('gift-')){
+    document.querySelectorAll('.scale').forEach(scale=>{
+      const key = scale.dataset.gift, idx = +scale.dataset.idx;
+      scale.querySelectorAll('button').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          state.s[key][idx] = +btn.dataset.val;
+          save(); render();
+        });
+      });
+    });
+  }
+  if(s.startsWith('trait-')){
+    const key = s.replace('trait-','');
+    document.querySelectorAll('.choice').forEach(choice=>{
+      choice.addEventListener('click', ()=>{
+        const idx = +choice.dataset.idx;
+        const arr = state[key];
+        const pos = arr.indexOf(idx);
+        if(pos > -1){ arr.splice(pos,1); }
+        else {
+          if(arr.length >= 3){ document.getElementById('traitHint').textContent = 'Pick just 2 or 3 \u2014 deselect one first.'; return; }
+          arr.push(idx);
+        }
+        save(); render();
+      });
+    });
+  }
+  if(s === 'reflect'){
+    document.querySelectorAll('[data-field]').forEach(ta=>{
+      ta.addEventListener('input', ()=>{ state.reflect[ta.dataset.field] = ta.value; save(); });
+    });
+  }
+  if(s === 'nextstep'){
+    document.getElementById('nextstepInput').addEventListener('input', e=>{ state.nextstep = e.target.value; save(); });
+    document.getElementById('askInput').addEventListener('input', e=>{ state.ask = e.target.value; save(); });
+  }
+  if(s === 'final'){
+    document.getElementById('restartBtn').addEventListener('click', ()=>{
+      state = {step:0, s:{}, h:[], a:[], p:[], e:[], reflect:{}, nextstep:'', ask:''};
+      GIFTS.forEach(g => state.s[g.key] = [0,0]);
+      save(); render();
+    });
+  }
+}
+
+document.getElementById('backBtn').addEventListener('click', ()=>{
+  if(state.step > 0){ state.step--; save(); render(); }
+});
+document.getElementById('nextBtn').addEventListener('click', ()=>{
+  if(state.step < STEPS.length-1){ state.step++; save(); render(); }
+});
+
+render();
+</script>
+</body>
+</html>
